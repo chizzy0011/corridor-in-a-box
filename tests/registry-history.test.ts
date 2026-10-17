@@ -125,7 +125,10 @@ describe("registry history and event decoding (#249)", () => {
       networkPassphrase: "Test SDF Network ; September 2015",
     });
 
-    vi.spyOn((registry as unknown as { server: Record<string, unknown> }).server, "getEvents").mockResolvedValue({
+    vi.spyOn(
+      (registry as unknown as { server: Record<string, unknown> }).server,
+      "getEvents",
+    ).mockResolvedValue({
       latestLedger: fixture.latestLedger,
       oldestLedger: fixture.oldestLedger, // 90000
       latestLedgerCloseTime: fixture.latestLedgerCloseTime,
