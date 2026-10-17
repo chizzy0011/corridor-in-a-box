@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import { nativeToScVal } from "@stellar/stellar-sdk";
 import { AnchorRegistry, decodeAttestationEvent } from "@corridor/registry";
 
 interface FixtureData {
@@ -72,18 +73,37 @@ describe("registry history and event decoding (#249)", () => {
     });
 
     // Mock server.getEvents to return fixture data
-    vi.spyOn((registry as unknown as { server: Record<string, unknown> }).server, "getEvents").mockResolvedValue({
-      latestLedger: fixture.latestLedger,
-      oldestLedger: fixture.oldestLedger,
-      latestLedgerCloseTime: fixture.latestLedgerCloseTime,
-      oldestLedgerCloseTime: fixture.oldestLedgerCloseTime,
-      cursor: fixture.cursor,
-      events: fixture.events,
-    });
+    const getEvents = vi
+      .spyOn((registry as unknown as { server: Record<string, unknown> }).server, "getEvents")
+      .mockResolvedValue({
+        latestLedger: fixture.latestLedger,
+        oldestLedger: fixture.oldestLedger,
+        latestLedgerCloseTime: fixture.latestLedgerCloseTime,
+        oldestLedgerCloseTime: fixture.oldestLedgerCloseTime,
+        cursor: fixture.cursor,
+        events: fixture.events,
+      });
 
     const history = await registry.history("testanchor.stellar.org", {
       startLedger: 91000,
     });
+
+    // The contract publishes topics (Symbol("attested"), domain), so the RPC filter must be
+    // a single two-segment topic filter in that order or a live registry returns nothing.
+    expect(getEvents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: [
+          expect.objectContaining({
+            topics: [
+              [
+                nativeToScVal("attested", { type: "symbol" }).toXDR("base64"),
+                nativeToScVal("testanchor.stellar.org", { type: "string" }).toXDR("base64"),
+              ],
+            ],
+          }),
+        ],
+      }),
+    );
 
     expect(history.domain).toBe("testanchor.stellar.org");
     expect(history.earliestLedgerCovered).toBe(91000);

@@ -63,6 +63,43 @@ export interface AnchorHistory {
   readonly oldestLedger: number;
 }
 
+/** Which attestations an operator asked for. Every field supplied must match. */
+export interface AttestationFilter {
+  /** The anchor must advertise every one of these SEP numbers. */
+  readonly sep?: readonly number[];
+  /** The anchor must have passed every one of these probes. */
+  readonly passed?: readonly ProbeName[];
+  /** The attestation must be no staler than this many ledgers. */
+  readonly maxAge?: number;
+}
+
+/**
+ * Narrow `records` to the anchors matching `opts`, preserving input order.
+ *
+ * Pure and synchronous on purpose. Staleness is passed in rather than fetched,
+ * so the exact same predicate backs both the human table and `--json` without a
+ * network read per filter. Filters intersect, so a record is kept only when it
+ * satisfies every supplied condition and adding a filter never widens the
+ * result. A domain missing from `stalenessByDomain` cannot satisfy `maxAge` and
+ * is dropped rather than assumed fresh.
+ */
+export function filterAttestations(
+  records: readonly AnchorAttestation[],
+  stalenessByDomain: Readonly<Record<string, number>>,
+  opts: AttestationFilter = {},
+): AnchorAttestation[] {
+  const { sep, passed, maxAge } = opts;
+  return records.filter((record) => {
+    if (sep && !sep.every((n) => record.seps.includes(n))) return false;
+    if (passed && !passed.every((p) => record.probesPassed.includes(p))) return false;
+    if (maxAge !== undefined) {
+      const age = stalenessByDomain[record.domain];
+      if (age === undefined || age > maxAge) return false;
+    }
+    return true;
+  });
+}
+
 export interface RegistryOptions {
   /** Soroban RPC endpoint. */
   rpcUrl: string;
@@ -224,9 +261,14 @@ export class AnchorRegistry {
       {
         type: "contract",
         contractIds: [this.contract.contractId()],
+        // One filter, two segments: the contract event is published with topics
+        // `(Symbol("attested"), domain)`. `#[contractevent]` snake_cases the struct name
+        // for the prefix topic, so "Attested" would match nothing on a live registry.
         topics: [
-          ["*", nativeToScVal("Attested", { type: "symbol" }).toXDR("base64")],
-          [nativeToScValString(domain).toXDR("base64")],
+          [
+            nativeToScVal("attested", { type: "symbol" }).toXDR("base64"),
+            nativeToScValString(domain).toXDR("base64"),
+          ],
         ],
       },
     ];
