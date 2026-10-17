@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { nativeToScVal } from "@stellar/stellar-sdk";
 import { AnchorRegistry, decodeAttestationEvent } from "@corridor/registry";
 
+/** The slice of the Soroban RPC client these tests stub. */
+type RegistryServer = { getEvents: (...args: unknown[]) => Promise<unknown> };
+
 interface FixtureData {
   latestLedger: number;
   oldestLedger: number;
@@ -74,7 +77,7 @@ describe("registry history and event decoding (#249)", () => {
 
     // Mock server.getEvents to return fixture data
     const getEvents = vi
-      .spyOn((registry as unknown as { server: Record<string, unknown> }).server, "getEvents")
+      .spyOn((registry as unknown as { server: RegistryServer }).server, "getEvents")
       .mockResolvedValue({
         latestLedger: fixture.latestLedger,
         oldestLedger: fixture.oldestLedger,
@@ -126,7 +129,7 @@ describe("registry history and event decoding (#249)", () => {
     });
 
     vi.spyOn(
-      (registry as unknown as { server: Record<string, unknown> }).server,
+      (registry as unknown as { server: RegistryServer }).server,
       "getEvents",
     ).mockResolvedValue({
       latestLedger: fixture.latestLedger,
