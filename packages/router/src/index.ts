@@ -220,3 +220,10 @@ export type {
   RoutePolicy,
   RouteRequest,
 } from "./planner";
+
+export { PinnedRouteResolver, UnpinnedRouteError } from "./pinned-resolver";
+export type {
+  PinnedRouteResolverOptions,
+  PinnedRunRecord,
+  PinnedRunStore,
+} from "./pinned-resolver";

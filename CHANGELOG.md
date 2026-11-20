@@ -40,6 +40,18 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it reache
   `RoutePlanner` (`packages/router/src/planner.ts`), matching the route planner interface sketch
   in `docs/rfcs/0004-smart-router.md` §1 with TSDoc on every type and field.
 
+### Added — resume-safe route pinning ([#625](https://github.com/corridor-in-a-box/corridor-in-a-box/issues/625))
+
+- `PinnedRouteResolver` in `@corridor/router` resolves a run only to the receiving anchor
+  stored on it (`receivingDomain`, optional `routeProtocol`), so a resumed run never picks a
+  new anchor. With no stored route, or a stored route for another corridor, it refuses with
+  `UnpinnedRouteError`. On the public network, or whenever a registry is configured, it
+  applies the same `checkAttestation` gate as `RegistryRouteResolver`.
+- A pinned domain that differs from the passed corridor needs a `corridorFor` lookup that
+  returns that anchor's corridor. Without one the resolver refuses rather than rewriting
+  `home_domain` alone, which would attest one anchor while the adapter still called the
+  other's endpoints.
+
 ### Added — a custody statement ([#707](https://github.com/corridor-in-a-box/corridor-in-a-box/issues/707))
 
 - `docs/custody.md` says in one place that the project never holds funds or a key that can
